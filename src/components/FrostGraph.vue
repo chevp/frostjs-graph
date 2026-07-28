@@ -8,154 +8,34 @@
    can be clicked to edit their YAML.
    ============================================================ */
 import { computed, nextTick, reactive, ref } from 'vue'
-
-interface NodeT { id: string; name: string; x: number; y: number; parent: string | null; comp: string | null }
-interface LinkT { id: string; from: string; to: string }
-interface CompDef { kind: string; name: string; icon: string; gradient: string; maxOut?: number }
-
-const COMPONENTS: CompDef[] = [
-  { kind: 'text',    name: 'Text',       icon: 'T',  gradient: 'linear-gradient(135deg,#60a5fa,#3b82f6)' },
-  { kind: 'heading', name: 'Heading',    icon: 'H',  gradient: 'linear-gradient(135deg,#818cf8,#6366f1)' },
-  { kind: 'image',   name: 'Bild',       icon: '🖼', gradient: 'linear-gradient(135deg,#f472b6,#ec4899)', maxOut: 0 },
-  { kind: 'button',  name: 'Button',     icon: '▭',  gradient: 'linear-gradient(135deg,#fb923c,#f97316)', maxOut: 0 },
-  { kind: 'chart',   name: 'Chart',      icon: '📈', gradient: 'linear-gradient(135deg,#4ade80,#22c55e)' },
-  { kind: 'table',   name: 'Tabelle',    icon: '▦',  gradient: 'linear-gradient(135deg,#2dd4bf,#14b8a6)' },
-  { kind: 'list',    name: 'Liste',      icon: '≡',  gradient: 'linear-gradient(135deg,#a78bfa,#8b5cf6)' },
-  { kind: 'map',     name: 'Karte',      icon: '🗺', gradient: 'linear-gradient(135deg,#34d399,#10b981)' },
-  { kind: 'form',    name: 'Formular',   icon: '📝', gradient: 'linear-gradient(135deg,#fbbf24,#f59e0b)' },
-  { kind: 'video',   name: 'Video',      icon: '▶',  gradient: 'linear-gradient(135deg,#f87171,#ef4444)', maxOut: 0 },
-  { kind: 'badge',   name: 'Badge',      icon: '●',  gradient: 'linear-gradient(135deg,#e879f9,#d946ef)', maxOut: 0 },
-  { kind: 'nav',     name: 'Navigation', icon: '☰',  gradient: 'linear-gradient(135deg,#93c5fd,#60a5fa)' },
-]
-const compByKind = (k: string) => COMPONENTS.find((c) => c.kind === k)
-function maxOutOf(node: NodeT): number {
-  const c = node.comp ? compByKind(node.comp) : null
-  return c && c.maxOut !== undefined ? c.maxOut : Infinity
-}
-function isRootNode(n: NodeT) { return n.parent === null }
-function isLeafNode(n: NodeT) { return !nodes.some((x) => x.parent === n.id) }
-function mainAdapterNodes() {
-  const rootCandidates = nodes.filter(isRootNode)
-  const inNodeId = rootCandidates.length ? rootCandidates.reduce((a, b) => (a.x <= b.x ? a : b)).id : null
-  const leafCandidates = nodes.filter((n) => isLeafNode(n) && maxOutOf(n) !== 0)
-  const outNodeId = leafCandidates.length ? leafCandidates.reduce((a, b) => (a.x + NODE_W >= b.x + NODE_W ? a : b)).id : null
-  return { inNodeId, outNodeId }
-}
-
-/* ── default per-kind config, shown/edited as YAML ── */
-const DEFAULT_CONFIG: Record<string, () => any> = {
-  text:    () => ({ content: 'Lorem ipsum dolor sit amet.', align: 'left', size: 'md' }),
-  heading: () => ({ text: 'Überschrift', level: 2, align: 'left' }),
-  image:   () => ({ src: 'https://picsum.photos/600/400', alt: 'Platzhalterbild', fit: 'cover' }),
-  button:  () => ({ label: 'Klicken', variant: 'primary', action: 'navigate:/' }),
-  chart:   () => ({ type: 'line', dataSource: 'sales.csv', legend: true }),
-  table:   () => ({ columns: ['Name', 'Wert'], pageSize: 10, sortable: true }),
-  list:    () => ({ ordered: false, items: ['Punkt 1', 'Punkt 2', 'Punkt 3'] }),
-  map:     () => ({ lat: 47.37, lng: 8.54, zoom: 12, marker: true }),
-  form:    () => ({ submitLabel: 'Senden', fields: [{ name: 'email', type: 'email', required: true }, { name: 'message', type: 'textarea', required: false }] }),
-  video:   () => ({ src: 'clip.mp4', autoplay: false, loop: false }),
-  badge:   () => ({ text: 'Neu', color: 'teal' }),
-  nav:     () => ({ orientation: 'vertical', items: ['Start', 'Produkte', 'Kontakt'] }),
-}
-function defaultConfigFor(kind: string) {
-  const f = DEFAULT_CONFIG[kind]
-  return f ? f() : {}
-}
-
-/* ── minimal YAML stringify/parse — flat values, one/two levels of
-   nesting, arrays of scalars or flat objects. Not a full YAML
-   implementation, just enough for the shapes above. ── */
-function yamlScalar(v: any): string {
-  if (typeof v === 'string') {
-    if (v === '' || /[:#[\]{}\n]/.test(v) || /^\s|\s$/.test(v)) return JSON.stringify(v)
-    return v
-  }
-  return String(v)
-}
-function yamlStringify(val: any, indent = 0): string {
-  const pad = '  '.repeat(indent)
-  if (Array.isArray(val)) {
-    if (val.length === 0) return pad + '[]\n'
-    return val.map((item) => {
-      if (item && typeof item === 'object' && !Array.isArray(item)) {
-        const entries = Object.entries(item)
-        return entries.map(([k, v], i) => {
-          const prefix = i === 0 ? pad + '- ' : pad + '  '
-          if (v && typeof v === 'object') return prefix + k + ':\n' + yamlStringify(v, indent + 2)
-          return prefix + k + ': ' + yamlScalar(v)
-        }).join('\n')
-      }
-      return pad + '- ' + yamlScalar(item)
-    }).join('\n') + '\n'
-  }
-  return Object.entries(val).map(([k, v]) => {
-    if (v && typeof v === 'object') return pad + k + ':\n' + yamlStringify(v, indent + 1)
-    return pad + k + ': ' + yamlScalar(v)
-  }).join('\n') + '\n'
-}
-function yamlParseScalar(s: string): any {
-  if (s === '') return ''
-  if (s === 'true') return true
-  if (s === 'false') return false
-  if (s === '[]') return []
-  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s)
-  if (s.startsWith('"') && s.endsWith('"')) { try { return JSON.parse(s) } catch { return s.slice(1, -1) } }
-  if (s.startsWith("'") && s.endsWith("'")) return s.slice(1, -1)
-  return s
-}
-function yamlParse(text: string): any {
-  const rawLines = text.split('\n')
-  const lines: string[] = []
-  rawLines.forEach((l) => { if (l.trim() !== '' && !l.trim().startsWith('#')) lines.push(l.replace(/\t/g, '  ')) })
-  let idx = 0
-  const indentOf = (l: string) => l.match(/^ */)![0].length
-  function parseBlock(indent: number): any {
-    if (idx >= lines.length || indentOf(lines[idx]) < indent) return {}
-    const isList = lines[idx].trim().startsWith('-')
-    if (isList) {
-      const arr: any[] = []
-      while (idx < lines.length && indentOf(lines[idx]) === indent && lines[idx].trim().startsWith('-')) {
-        const content = lines[idx].trim().slice(1).trim()
-        if (content === '') { idx++; arr.push(parseBlock(indent + 2)); continue }
-        const kvMatch = content.match(/^([\w.-]+):\s*(.*)$/)
-        if (kvMatch) {
-          const itemIndent = indent + 2
-          const obj: Record<string, any> = {}
-          obj[kvMatch[1]] = kvMatch[2] === '' ? null : yamlParseScalar(kvMatch[2])
-          idx++
-          if (obj[kvMatch[1]] === null) obj[kvMatch[1]] = parseBlock(itemIndent + 2)
-          while (idx < lines.length && indentOf(lines[idx]) === itemIndent && !lines[idx].trim().startsWith('- ') && lines[idx].trim() !== '-') {
-            const line = lines[idx].trim()
-            const m = line.match(/^([\w.-]+):\s*(.*)$/)
-            if (m) {
-              if (m[2] === '') { idx++; obj[m[1]] = parseBlock(itemIndent + 2); continue }
-              obj[m[1]] = yamlParseScalar(m[2])
-            }
-            idx++
-          }
-          arr.push(obj)
-        } else {
-          arr.push(yamlParseScalar(content))
-          idx++
-        }
-      }
-      return arr
-    }
-    const obj: Record<string, any> = {}
-    while (idx < lines.length && indentOf(lines[idx]) === indent) {
-      const line = lines[idx].trim()
-      const m = line.match(/^([\w.-]+):\s*(.*)$/)
-      if (!m) { idx++; continue }
-      const key = m[1], rest = m[2]
-      idx++
-      obj[key] = rest === '' ? parseBlock(indent + 2) : yamlParseScalar(rest)
-    }
-    return obj
-  }
-  const result = parseBlock(0)
-  if (typeof result !== 'object' || result === null) throw new Error('YAML muss ein Objekt (key: value) ergeben.')
-  return result
-}
+import {
+  COMPONENTS,
+  compByKind,
+  maxOutOf,
+  defaultConfigFor,
+  yamlStringify,
+  yamlParse,
+  NODE_W,
+  NODE_H,
+  SIDES,
+  sideNormal,
+  computePorts,
+  sideSlotInfo,
+  portSlotLocal,
+  portSlotWorld,
+  buildPath,
+  wouldCycle,
+  mainAdapterNodes,
+  computeGroups,
+  groupRect,
+  bestSidesRect,
+  rectSideCenter,
+  groupEdgeCounts,
+  directPath,
+  cubicPoint,
+  leafPath as leafPathOf,
+} from '@frostjs/frostjs'
+import type { NodeT, LinkT, Side, Dir } from '@frostjs/frostjs'
 
 /* ── demo tile tree ── */
 const nodes = reactive<NodeT[]>([
@@ -177,226 +57,11 @@ const links = reactive<LinkT[]>(
 const selNode = ref<string | null>('content')
 
 function leafPath(id: string): string {
-  const parts: string[] = []
-  let n: NodeT | undefined = nodes.find((x) => x.id === id)
-  while (n) {
-    parts.unshift(n.name)
-    n = n.parent ? nodes.find((x) => x.id === n!.parent) : undefined
-  }
-  return parts.join(' › ')
+  return leafPathOf(nodes, id)
 }
 
-/* ── geometry ── */
-const NODE_W = 186
-const NODE_H = 132
 const WORLD_W = 2400
 const WORLD_H = 1500
-const SIDES = ['top', 'right', 'bottom', 'left'] as const
-type Side = typeof SIDES[number]
-const PORT_PITCH = 15
-function sideNormal(side: Side) { return { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } }[side] }
-function sideCenter(side: Side) {
-  switch (side) {
-    case 'top': return { x: NODE_W / 2, y: 0 }
-    case 'bottom': return { x: NODE_W / 2, y: NODE_H }
-    case 'left': return { x: 0, y: NODE_H / 2 }
-    case 'right': return { x: NODE_W, y: NODE_H / 2 }
-  }
-}
-function localPortPos(side: Side, idx: number, total: number) {
-  const c = sideCenter(side)
-  const off = (idx - (total - 1) / 2) * PORT_PITCH
-  return side === 'top' || side === 'bottom' ? { x: c.x + off, y: c.y } : { x: c.x, y: c.y + off }
-}
-function rectOf(n: NodeT) { return { x1: n.x, y1: n.y, x2: n.x + NODE_W, y2: n.y + NODE_H } }
-
-function bestSides(a: NodeT, b: NodeT): any {
-  let best: any = null
-  SIDES.forEach((outSide) => {
-    const outC = { x: a.x + sideCenter(outSide).x, y: a.y + sideCenter(outSide).y }
-    const outN = sideNormal(outSide)
-    SIDES.forEach((inSide) => {
-      const inC = { x: b.x + sideCenter(inSide).x, y: b.y + sideCenter(inSide).y }
-      const inN = sideNormal(inSide)
-      const toB = { x: inC.x - outC.x, y: inC.y - outC.y }
-      const dOut = outN.x * toB.x + outN.y * toB.y
-      const dIn = inN.x * -toB.x + inN.y * -toB.y
-      if (dOut <= 0 || dIn <= 0) return
-      const dist = Math.hypot(toB.x, toB.y)
-      if (!best || dist < best.dist) best = { outSide, inSide, dist }
-    })
-  })
-  if (!best) {
-    SIDES.forEach((outSide) => SIDES.forEach((inSide) => {
-      const outC = { x: a.x + sideCenter(outSide).x, y: a.y + sideCenter(outSide).y }
-      const inC = { x: b.x + sideCenter(inSide).x, y: b.y + sideCenter(inSide).y }
-      const dist = Math.hypot(inC.x - outC.x, inC.y - outC.y)
-      if (!best || dist < best.dist) best = { outSide, inSide, dist }
-    }))
-  }
-  return best
-}
-
-function computePorts() {
-  const map: Record<string, Record<Side, { in: LinkT[]; out: LinkT[] }>> = {}
-  nodes.forEach((n) => { map[n.id] = {} as any; SIDES.forEach((s) => (map[n.id][s] = { in: [], out: [] })) })
-  const linkSides = links.map((l) => {
-    const a = nodes.find((x) => x.id === l.from), b = nodes.find((x) => x.id === l.to)
-    if (!a || !b) return null
-    const s = bestSides(a, b)
-    return { link: l, outSide: s.outSide as Side, inSide: s.inSide as Side }
-  }).filter(Boolean) as { link: LinkT; outSide: Side; inSide: Side }[]
-  linkSides.forEach((ls) => {
-    map[ls.link.from][ls.outSide].out.push(ls.link)
-    map[ls.link.to][ls.inSide].in.push(ls.link)
-  })
-  Object.keys(map).forEach((id) => {
-    SIDES.forEach((side) => (['in', 'out'] as const).forEach((dir) => {
-      const arr = map[id][side][dir]
-      const key = side === 'top' || side === 'bottom' ? 'x' : 'y'
-      arr.sort((l1, l2) => {
-        const o1 = nodes.find((x) => x.id === (dir === 'out' ? l1.to : l1.from))!
-        const o2 = nodes.find((x) => x.id === (dir === 'out' ? l2.to : l2.from))!
-        return (o1 as any)[key] - (o2 as any)[key]
-      })
-    }))
-  })
-  return { map, linkSides }
-}
-function sideSlotInfo(node: NodeT, side: Side, dir: 'in' | 'out', map: any) {
-  const arr = map[node.id][side][dir] as LinkT[]
-  if (dir === 'in') return { arr, total: arr.length + 1 }
-  const maxOut = maxOutOf(node)
-  if (maxOut === 0) return { arr, total: 0 }
-  const capped = arr.length >= maxOut
-  return { arr, total: capped ? arr.length : arr.length + 1 }
-}
-function portSlotLocal(node: NodeT, side: Side, dir: 'in' | 'out', idxWithinDir: number, map: any) {
-  const inInfo = sideSlotInfo(node, side, 'in', map)
-  const outInfo = sideSlotInfo(node, side, 'out', map)
-  const total = inInfo.total + outInfo.total
-  const idx = dir === 'in' ? idxWithinDir : inInfo.total + idxWithinDir
-  return localPortPos(side, idx, total)
-}
-function portSlotWorld(node: NodeT, side: Side, dir: 'in' | 'out', idxWithinDir: number, map: any) {
-  const p = portSlotLocal(node, side, dir, idxWithinDir, map)
-  return { x: node.x + p.x, y: node.y + p.y }
-}
-
-function bowAmt(dist: number) { return Math.max(26, Math.min(85, dist * 0.5)) }
-function directPath(a: any, na: any, b: any, nb: any) {
-  const dist = Math.hypot(b.x - a.x, b.y - a.y)
-  const bow = bowAmt(dist)
-  const c1 = { x: a.x + na.x * bow, y: a.y + na.y * bow }
-  const c2 = { x: b.x + nb.x * bow, y: b.y + nb.y * bow }
-  return { c1, c2 }
-}
-function cubicPoint(a: any, c1: any, c2: any, b: any, t: number) {
-  const mt = 1 - t
-  const x = mt * mt * mt * a.x + 3 * mt * mt * t * c1.x + 3 * mt * t * t * c2.x + t * t * t * b.x
-  const y = mt * mt * mt * a.y + 3 * mt * mt * t * c1.y + 3 * mt * t * t * c2.y + t * t * t * b.y
-  return { x, y }
-}
-function pointInRect(p: any, r: any, pad: number) { return p.x > r.x1 - pad && p.x < r.x2 + pad && p.y > r.y1 - pad && p.y < r.y2 + pad }
-function findBlockingNode(a: any, c1: any, c2: any, b: any, excludeIds: string[]) {
-  for (let t = 0.14; t <= 0.86; t += 0.08) {
-    const p = cubicPoint(a, c1, c2, b, t)
-    for (const n of nodes) {
-      if (excludeIds.includes(n.id)) continue
-      if (pointInRect(p, rectOf(n), 4)) return n
-    }
-  }
-  return null
-}
-function bentPath(a: any, na: any, b: any, nb: any, blocker: NodeT) {
-  const bow = bowAmt(Math.hypot(b.x - a.x, b.y - a.y)) * 0.6
-  const c1a = { x: a.x + na.x * bow, y: a.y + na.y * bow }
-  const c2b = { x: b.x + nb.x * bow, y: b.y + nb.y * bow }
-  const dx = b.x - a.x, dy = b.y - a.y, M = 16
-  const R = rectOf(blocker)
-  let W: any
-  if (Math.abs(dy) >= Math.abs(dx)) {
-    const leftX = R.x1 - M, rightX = R.x2 + M, avgX = (a.x + b.x) / 2
-    W = { x: Math.abs(avgX - leftX) < Math.abs(avgX - rightX) ? leftX : rightX, y: (a.y + b.y) / 2 }
-  } else {
-    const topY = R.y1 - M, botY = R.y2 + M, avgY = (a.y + b.y) / 2
-    W = { x: (a.x + b.x) / 2, y: Math.abs(avgY - topY) < Math.abs(avgY - botY) ? topY : botY }
-  }
-  const c1w = { x: W.x - dx * 0.12, y: W.y - dy * 0.12 }
-  const c2w = { x: W.x + dx * 0.12, y: W.y + dy * 0.12 }
-  return `M ${a.x} ${a.y} C ${c1a.x} ${c1a.y}, ${c1w.x} ${c1w.y}, ${W.x} ${W.y} ` +
-         `C ${c2w.x} ${c2w.y}, ${c2b.x} ${c2b.y}, ${b.x} ${b.y}`
-}
-function buildPath(a: any, na: any, b: any, nb: any, excludeIds: string[]) {
-  const { c1, c2 } = directPath(a, na, b, nb)
-  const blocker = findBlockingNode(a, c1, c2, b, excludeIds)
-  if (!blocker) return `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`
-  return bentPath(a, na, b, nb, blocker)
-}
-
-function wouldCycle(fromId: string, toId: string) {
-  const seen = new Set([toId]); const stack = [toId]
-  while (stack.length) {
-    const cur = stack.pop()!
-    if (cur === fromId) return true
-    links.filter((l) => l.from === cur).forEach((l) => { if (!seen.has(l.to)) { seen.add(l.to); stack.push(l.to) } })
-  }
-  return false
-}
-
-/* tier-2 (macro) grouping */
-function trueRootOf(n: NodeT): NodeT {
-  let cur = n
-  while (cur.parent) { const p = nodes.find((x) => x.id === cur.parent); if (!p) break; cur = p }
-  return cur
-}
-function groupIdOf(n: NodeT): string {
-  const root = trueRootOf(n)
-  if (n.id === root.id) return root.id
-  let cur = n
-  while (cur.parent !== root.id) cur = nodes.find((x) => x.id === cur.parent)!
-  return cur.id
-}
-function groupRect(ids: string[], pad: number) {
-  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity
-  ids.forEach((id) => {
-    const n = nodes.find((x) => x.id === id)!; const r = rectOf(n)
-    x1 = Math.min(x1, r.x1); y1 = Math.min(y1, r.y1)
-    x2 = Math.max(x2, r.x2); y2 = Math.max(y2, r.y2)
-  })
-  return { x1: x1 - pad, y1: y1 - pad, x2: x2 + pad, y2: y2 + pad }
-}
-function rectSideCenter(r: any, side: Side) {
-  switch (side) {
-    case 'top': return { x: (r.x1 + r.x2) / 2, y: r.y1 }
-    case 'bottom': return { x: (r.x1 + r.x2) / 2, y: r.y2 }
-    case 'left': return { x: r.x1, y: (r.y1 + r.y2) / 2 }
-    case 'right': return { x: r.x2, y: (r.y1 + r.y2) / 2 }
-  }
-}
-function bestSidesRect(ra: any, rb: any): any {
-  let best: any = null
-  SIDES.forEach((outSide) => {
-    const outC = rectSideCenter(ra, outSide), outN = sideNormal(outSide)
-    SIDES.forEach((inSide) => {
-      const inC = rectSideCenter(rb, inSide), inN = sideNormal(inSide)
-      const toB = { x: inC.x - outC.x, y: inC.y - outC.y }
-      const dOut = outN.x * toB.x + outN.y * toB.y
-      const dIn = inN.x * -toB.x + inN.y * -toB.y
-      if (dOut <= 0 || dIn <= 0) return
-      const dist = Math.hypot(toB.x, toB.y)
-      if (!best || dist < best.dist) best = { outSide, inSide, dist }
-    })
-  })
-  if (!best) {
-    SIDES.forEach((outSide) => SIDES.forEach((inSide) => {
-      const outC = rectSideCenter(ra, outSide), inC = rectSideCenter(rb, inSide)
-      const dist = Math.hypot(inC.x - outC.x, inC.y - outC.y)
-      if (!best || dist < best.dist) best = { outSide, inSide, dist }
-    }))
-  }
-  return best
-}
 
 /* ── view / pan / zoom / tier state ── */
 const gx = ref(40), gy = ref(20), gs = ref(1)
@@ -406,8 +71,8 @@ const isPanning = ref(false)
 const canvasEl = ref<HTMLDivElement | null>(null)
 const tempWire = ref<string | null>(null)
 
-const portsData = computed(() => computePorts())
-const adapterNodes = computed(() => mainAdapterNodes())
+const portsData = computed(() => computePorts(nodes, links))
+const adapterNodes = computed(() => mainAdapterNodes(nodes))
 
 function portsFor(node: NodeT) {
   const map = portsData.value.map
@@ -447,7 +112,7 @@ const wireList = computed(() => {
     const pa = portSlotWorld(a, ls.outSide, 'out', outIdx, map)
     const pb = portSlotWorld(b, ls.inSide, 'in', inIdx, map)
     const na = sideNormal(ls.outSide), nb = sideNormal(ls.inSide)
-    const d = buildPath(pa, na, pb, nb, [a.id, b.id])
+    const d = buildPath(nodes, pa, na, pb, nb, [a.id, b.id])
     return { linkId: ls.link.id, d }
   })
 })
@@ -455,17 +120,12 @@ const wireList = computed(() => {
 const tier2Groups = computed(() => {
   if (currentTier.value !== 2) return []
   const palette = ['t-pink', 't-amber', 't-violet', 't-green', 't-red', 't-blue']
-  const groups: Record<string, { ids: string[]; repNode: NodeT }> = {}
-  nodes.forEach((n) => {
-    const gid = groupIdOf(n)
-    if (!groups[gid]) groups[gid] = { ids: [], repNode: nodes.find((x) => x.id === gid)! }
-    groups[gid].ids.push(n.id)
-  })
+  const groups = computeGroups(nodes)
   let colorIdx = 0
   return Object.keys(groups).map((gid) => {
     const g = groups[gid]
     const isHub = g.repNode.parent === null
-    const rect = groupRect(g.ids, isHub ? 16 : 26)
+    const rect = groupRect(nodes, g.ids, isHub ? 16 : 26)
     const kinds = [...new Set(g.ids.map((id) => nodes.find((x) => x.id === id)!.comp).filter(Boolean))].slice(0, 5).map((k) => compByKind(k as string)!)
     return { id: gid, rect, isHub, cls: isHub ? 'hub' : palette[colorIdx++ % palette.length], name: g.repNode.name, count: g.ids.length, kinds }
   })
@@ -478,15 +138,7 @@ const tier2Rects = computed(() => {
 const tier2Edges = computed(() => {
   if (currentTier.value !== 2) return []
   const rects = tier2Rects.value
-  const edgeMap: Record<string, number> = {}
-  links.forEach((l) => {
-    const a = nodes.find((x) => x.id === l.from), b = nodes.find((x) => x.id === l.to)
-    if (!a || !b) return
-    const ga = groupIdOf(a), gb = groupIdOf(b)
-    if (ga === gb) return
-    const key = ga + '→' + gb
-    edgeMap[key] = (edgeMap[key] || 0) + 1
-  })
+  const edgeMap = groupEdgeCounts(nodes, links)
   return Object.keys(edgeMap).map((key) => {
     const [ga, gb] = key.split('→')
     const ra = rects[ga], rb = rects[gb]
@@ -578,7 +230,7 @@ function onPortPointerDown(e: PointerEvent, node: NodeT, port: { dir: 'in' | 'ou
     else if (fromDir === 'in' && toDir === 'out') { fromId = toNodeId; toId = fromNodeId }
     else { showToast('⚠', 'nur Ausgang → Eingang verbinden'); return }
     if (fromId === toId) return
-    if (wouldCycle(fromId, toId)) { showToast('⛔', 'würde einen Zyklus erzeugen'); return }
+    if (wouldCycle(links, fromId, toId)) { showToast('⛔', 'würde einen Zyklus erzeugen'); return }
     const srcNode = nodes.find((x) => x.id === fromId)!
     const curOut = links.filter((l) => l.from === fromId).length
     if (curOut >= maxOutOf(srcNode)) {
