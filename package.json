@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cryo/cryojs": "github:chevp/cryojs#v3.1.2",
     "vue": "^3.5.0"
   },
   "devDependencies": {
