@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@cryo/cryojs": "github:chevp/cryojs#v3.1.2",
-    "@frostjs/frostjs": "github:chevp/frostjs#v1.0.0",
+    "@frost/frostjs": "github:chevp/frostjs#v1.0.1",
     "vue": "^3.5.0"
   },
   "devDependencies": {

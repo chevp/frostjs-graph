@@ -34,8 +34,8 @@ import {
   directPath,
   cubicPoint,
   leafPath as leafPathOf,
-} from '@frostjs/frostjs'
-import type { NodeT, LinkT, Side, Dir } from '@frostjs/frostjs'
+} from '@frost/frostjs'
+import type { NodeT, LinkT, Side, Dir } from '@frost/frostjs'
 
 /* ── demo tile tree ── */
 const nodes = reactive<NodeT[]>([
