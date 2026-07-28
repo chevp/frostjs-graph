@@ -523,8 +523,9 @@ function showToast(icon: string, text: string) {
 .frost-graph input,.frost-graph textarea,.frost-graph select{font-family:inherit;color:inherit;background:none;border:none}
 
 .gtoolbar{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);background:var(--bg-titlebar)}
-.view-switch{padding:6px 11px;border-radius:7px;border:1px solid var(--border-strong);background:var(--accent-bg);color:var(--text);font-size:12px;font-weight:600;max-width:260px}
+.view-switch{padding:6px 11px;border-radius:7px;border:1px solid var(--border-strong);background:var(--accent-bg);color:var(--text);font-size:12px;font-weight:600;max-width:260px;color-scheme:dark}
 .view-switch:hover{filter:brightness(1.08)}
+.view-switch option{background:var(--bg-elevated);color:var(--text)}
 .gt-title{font-weight:700;font-size:12.5px;color:var(--text)}
 .gt-sep{width:1px;height:20px;background:var(--border)}
 .gt-btn{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-secondary);font-size:12px;font-weight:500}
