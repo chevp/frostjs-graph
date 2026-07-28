@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>frostjs-graph · Demo</title>
+<style>
+html,body{height:100%;margin:0;background:#171a21}
+frost-graph{display:block;width:100%;height:100vh}
+</style>
+</head>
+<body>
+
+<!-- The <frost-graph> element itself — Vue bundled in, built from this
+     repo's src/web-component.ts. Same base route as this page on GitHub
+     Pages, so a relative URL is enough (no CDN, no importmap). -->
+<script type="module" src="./frost-graph.js"></script>
+<frost-graph></frost-graph>
+
+<script type="module" src="https://chevp.github.io/chevp-footer/chevp-footer.js"></script>
+<chevp-footer></chevp-footer>
+</body>
+</html>
