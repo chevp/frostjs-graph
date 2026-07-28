@@ -16,19 +16,16 @@ npm install
 npm run dev
 ```
 
-Builds both a normal Vue app (`index.html` / `App.vue`) and a
-self-contained `<frost-graph>` custom element:
+`index.html` *is* the demo page — it imports `src/web-component.ts`
+directly (works as-is in `vite dev`; `vite build` bundles it into
+`dist/assets` like any other module script). It's deployed to GitHub
+Pages on push to `main`.
 
-```
-npm run build
-```
-
-`dist/frost-graph.js` bundles Vue in — load it and drop in the element:
+`npm run build` additionally produces a standalone, self-contained
+`<frost-graph>` custom element for consumers who just want to drop in
+one file, with Vue bundled in:
 
 ```html
 <script type="module" src="./frost-graph.js"></script>
 <frost-graph></frost-graph>
 ```
-
-See `public/demo.html` for the standalone demo page (deployed to GitHub
-Pages on push to `main`).

@@ -2,9 +2,11 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 // Builds src/web-component.ts into a single self-contained ES module — the
-// `<frost-graph>` custom element, with Vue bundled in. Run *after* the main
-// `vite build` (emptyOutDir:false so it lands alongside index.html in the
-// same dist/, next to demo.html copied from public/).
+// `<frost-graph>` custom element, with Vue bundled in, for consumers who
+// want to drop in just this one file. index.html itself no longer depends
+// on this output; it imports src/web-component.ts directly via the main
+// `vite build`. Run *after* the main build (emptyOutDir:false so it lands
+// alongside index.html in the same dist/).
 export default defineConfig({
   plugins: [vue()],
   build: {

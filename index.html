@@ -1,13 +1,64 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frostjs-graph</title>
-    <style>html,body,#app{height:100%;margin:0}</style>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>frostjs-graph · Demo</title>
+<link rel="icon" href="/cryo.png">
+<style>
+/* ==========================================================
+   frostjs-graph · Demo
+
+   index.html *is* the demo route (no separate /demo.html) — it
+   imports src/web-component.ts directly via the main `vite build`,
+   same approach as cryojs-component. Header/footer chrome mirrors
+   that repo's glass bars + brand icon; the <frost-graph> element
+   fills the rest and already ships its own toolbar/canvas UI.
+   ========================================================== */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100vh;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;flex-direction:column;background:#171a21}
+
+/* ── HEADER — plain glass bar, like antarctica.io's AppHeader ── */
+.gtoolbar{flex-shrink:0;height:64px;padding:0 24px;display:flex;align-items:center;gap:16px;background:rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.1)}
+.gtoolbar img{width:40px;height:40px}
+.gt-title{font-weight:700;font-size:20px;background:linear-gradient(135deg,#5eead4 0%,#14b8a6 50%,#0d9488 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+.gcanvas{flex:1;min-height:0}
+.gcanvas frost-graph{display:block;width:100%;height:100%}
+
+/* ── FOOTER — plain glass bar, like antarctica.io's AppFooter ── */
+.site-footer{flex-shrink:0;height:40px;padding:0 24px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.1)}
+.site-footer nav{display:flex;align-items:center;gap:16px;font-size:11px}
+.site-footer .copy{color:#8990a0}
+.site-footer a{color:#8990a0;text-decoration:none;transition:color .15s}
+.site-footer a:hover{color:#d6d9e0}
+</style>
+</head>
+<body>
+
+<div class="gtoolbar">
+  <img src="/cryo.png" alt="frostjs-graph">
+  <span class="gt-title">frostjs-graph</span>
+</div>
+
+<div class="gcanvas">
+  <frost-graph></frost-graph>
+</div>
+
+<footer class="site-footer">
+  <nav>
+    <span class="copy">&copy; 2025 Patrice Chevillat</span>
+    <a href="https://chevp.github.io/site-policy/terms.html" target="_blank" rel="noopener">Terms</a>
+    <a href="https://chevp.github.io/site-policy/privacy.html" target="_blank" rel="noopener">Privacy</a>
+    <a href="https://chevp.github.io/site-policy/impressum.html" target="_blank" rel="noopener">Impressum</a>
+    <a href="https://chevp.github.io/site-policy/contact.html" target="_blank" rel="noopener">Contact</a>
+  </nav>
+</footer>
+
+<!-- The <frost-graph> element itself — Vue bundled in by Vite from this
+     repo's src/web-component.ts (works in `vite dev` as-is; `vite build`
+     bundles it into dist/assets like any other module script). -->
+<script type="module" src="/src/web-component.ts"></script>
+</body>
 </html>
